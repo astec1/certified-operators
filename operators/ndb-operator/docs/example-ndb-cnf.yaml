@@ -1,0 +1,25 @@
+# MySQL Cluster with custom cnf config for the MySQL Servers
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ndbop-mysql-secret
+type: Opaque
+stringData:
+  password: ndbpass
+---
+apiVersion: mysql.oracle.com/v1
+kind: NdbCluster
+metadata:
+  name: example-ndb
+spec:
+  redundancyLevel: 2
+  dataNode:
+    nodeCount: 2
+  mysqlNode:
+    nodeCount: 2
+    rootPasswordSecretName: ndbop-mysql-secret
+    # Pass the configuration as a multiline string
+    myCnf: |
+      [mysqld]
+      max-user-connections=42
+      ndb-extra-logging=10
