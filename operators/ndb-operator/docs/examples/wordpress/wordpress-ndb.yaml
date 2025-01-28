@@ -1,1 +1,22 @@
-
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wordpress-mysql-secret
+type: Opaque
+stringData:
+  password: wordpresspass
+---
+apiVersion: mysql.oracle.com/v1
+kind: NdbCluster
+metadata:
+  name: wordpress-ndb
+spec:
+  redundancyLevel: 2
+  dataNode:
+    nodeCount: 2
+  mysqlNode:
+    nodeCount: 2
+    rootPasswordSecretName: wordpress-mysql-secret
+    myCnf: |
+      [mysqld]
+      default_storage_engine=NDBCLUSTER
