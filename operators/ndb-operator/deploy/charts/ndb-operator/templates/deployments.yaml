@@ -1,0 +1,91 @@
+# Deploy the webhook server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Release.Name}}-webhook-server
+  namespace: {{.Release.Namespace}}
+  labels:
+    release: {{.Chart.AppVersion}}
+    app: ndb-operator-webhook-deployment
+spec:
+  selector:
+    matchLabels:
+      {{template "webhook-service.pod-label"}}
+  template:
+    metadata:
+      labels:
+        {{template "webhook-service.pod-label"}}
+    spec:
+      # use the account created above to run the server
+      serviceAccountName: {{.Release.Name}}-webhook-sa
+      {{- if .Values.imagePullSecretName }}
+      imagePullSecrets:
+        - name: {{.Values.imagePullSecretName}}
+      {{- end }}
+      containers:
+        - name: ndb-operator-webhook
+          image: {{.Values.image}}
+          imagePullPolicy: {{.Values.imagePullPolicy}}
+          ports:
+            # expose the web server port
+            - containerPort: {{template "webhook-service.port"}}
+          command:
+            - ndb-operator-webhook
+          args:
+            - -service={{template "webhook-service.name" .}}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{template "webhook-service.port"}}
+              scheme: HTTPS
+  # set maxUnavailable to 0 so that helm will wait for the pod to become ready
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+---
+# Deploy Ndb operator
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Release.Name}}-app
+  namespace: {{.Release.Namespace}}
+  labels:
+    release: {{.Chart.AppVersion}}
+    app: ndb-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ndb-operator
+  template:
+    metadata:
+      labels:
+        app: ndb-operator
+    spec:
+      serviceAccountName: {{.Release.Name}}-app-sa
+      {{- if .Values.imagePullSecretName }}
+      imagePullSecrets:
+        - name: {{.Values.imagePullSecretName}}
+      {{- end }}
+      hostname: ndb-operator-pod
+      subdomain: ndb-operator-svc
+      containers:
+        - name: ndb-operator-controller
+          image: {{.Values.image}}
+          imagePullPolicy: {{.Values.imagePullPolicy}}
+          command:
+            - ndb-operator
+          args:
+            - -cluster-scoped={{.Values.clusterScoped}}
+          ports:
+            - containerPort: 1186
+          env:
+            # Expose the image name via env to the operator app
+            - name: NDB_OPERATOR_IMAGE
+              value: {{.Values.image}}
+            - name: NDB_OPERATOR_IMAGE_PULL_SECRET_NAME
+              value: {{.Values.imagePullSecretName}}
+  # set maxUnavailable to 0 so that helm will wait for the pod to become ready
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0

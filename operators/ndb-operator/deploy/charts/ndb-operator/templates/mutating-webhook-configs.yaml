@@ -1,0 +1,40 @@
+# Register the webhook service as a mutating webhook
+# since mutating webhook(mwh) is a cluster scoped resource, append release
+# namespace along with release name to the vwh name to allow installing multiple
+# namespace scoped operators
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{.Release.Namespace}}-{{.Release.Name}}-mwc
+  labels:
+    # This label will be used by the webhook server to
+    # list WebhookConfigurations to inject caBundle into
+    webhook-server: {{.Release.Namespace }}-{{template "webhook-service.name" .}}
+webhooks:
+  - clientConfig:
+      # caBundle will be filled in by the webhook server
+      service:
+        name: {{template "webhook-service.name" .}}
+        namespace: {{.Release.Namespace}}
+        path: /ndb/mutate
+        port: {{ template "webhook-service.port" }}
+    failurePolicy: Fail
+    name: mutating-webhook.ndbcluster.mysql.oracle.com
+    {{- if not .Values.clusterScoped }}
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{.Release.Namespace}}
+    {{- end }}
+    rules:
+      - apiGroups:
+          - mysql.oracle.com
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - ndbclusters
+    admissionReviewVersions:
+      - v1
+    sideEffects: None

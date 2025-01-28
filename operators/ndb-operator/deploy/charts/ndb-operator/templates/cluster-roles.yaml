@@ -1,1 +1,119 @@
+# Use ClusterRole if the operator is cluster-scoped
+# and Role if the operator is namespace-scoped.
+{{ $userRoleKind := ternary "ClusterRole" "Role" .Values.clusterScoped -}}
+---
+# ClusterRoles for the WebHook Server to access the non cluster-scoped resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{$userRoleKind}}
+metadata:
+  name: {{.Release.Name}}-webhook-cr
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+---
+# ClusterRoles for the WebHook Server to access the cluster-scoped resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{.Release.Namespace}}-{{.Release.Name}}-webhook-cr
+rules:
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+      - mutatingwebhookconfigurations
+    verbs:
+      - list
+      - patch
+---
+# Cluster roles for Ndb Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{$userRoleKind}}
+metadata:
+  name: {{.Release.Name}}-cr
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs:
+      - list
+      - watch
+      - delete
 
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs:
+      - list
+      - watch
+      - delete
+      - create
+
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs:
+      - list
+      - watch
+      - delete
+
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs:
+      - list
+      - watch
+      - create
+      - patch
+      - delete
+
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs:
+      - get
+      - create
+      - patch
+      - list
+      - watch
+
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs:
+      - get
+      - create
+      - delete
+      - list
+      - watch
+
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
+    verbs:
+      - create
+      - patch
+
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs:
+      - create
+      - patch
+      - list
+      - watch
+      - delete
+
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs:
+      - list
+      - watch
+      - create
+
+  - apiGroups: ["mysql.oracle.com"]
+    resources:
+      - ndbclusters
+      - ndbclusters/status
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
