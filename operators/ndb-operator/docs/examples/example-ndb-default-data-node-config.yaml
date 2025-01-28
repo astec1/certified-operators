@@ -1,0 +1,18 @@
+# MySQL Cluster with default data node config specified
+apiVersion: mysql.oracle.com/v1
+kind: NdbCluster
+metadata:
+  name: example-ndb
+spec:
+  redundancyLevel: 2
+  dataNode:
+    nodeCount: 2
+    config:
+      # The data node config has to be specified as a map.
+      # Both integer and string config values are accepted.
+      DataMemory: 100M
+      MaxNoOfTables: 1024
+      MaxNoOfConcurrentOperations: 409600
+      Arbitration: WaitExternal
+  mysqlNode:
+    nodeCount: 2
